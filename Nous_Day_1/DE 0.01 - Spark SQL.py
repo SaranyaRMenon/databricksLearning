@@ -29,10 +29,6 @@
 
 # COMMAND ----------
 
-# MAGIC %run ./Includes/Classroom-Setup-00.01
-
-# COMMAND ----------
-
 # DBTITLE 0,--i18n-3ad6c2cb-bfa4-4af5-b637-ba001a9ef54b
 # MAGIC %md
 # MAGIC
@@ -45,6 +41,35 @@
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC
+# MAGIC ### Transformations and Actions in Spark
+# MAGIC
+# MAGIC **Transformation**  
+# MAGIC A transformation is an operation on a DataFrame or RDD that produces a new DataFrame or RDD. Transformations are *lazy*, meaning they are not executed until an action is called.  
+# MAGIC - **Narrow Transformation**: Data required to compute the records in a single partition resides in a single partition of the parent. Less shuffling, more efficient.  
+# MAGIC   *Example*: `df.select("column")`, `df.where("column > 10")`
+# MAGIC - **Wide Transformation**: Data from multiple partitions may be required, causing shuffling across the cluster. More costly.  
+# MAGIC   *Example*: `df.groupBy("column").count()`, `df.orderBy("column")`
+# MAGIC
+# MAGIC **Action**  
+# MAGIC An action triggers the execution of transformations and returns a result to the driver or writes data to external storage. Actions are generally more costly because they require computation.  
+# MAGIC *Example*: `df.show()`, `df.collect()`, `df.count()`
+# MAGIC
+# MAGIC **Lazy Evaluation**  
+# MAGIC Spark uses lazy evaluation for transformations, meaning computation is deferred until an action is called. This allows Spark to optimize the execution plan and reduce costs.
+# MAGIC
+# MAGIC **Example:**
+# MAGIC
+# MAGIC python
+# MAGIC # Transformation (lazy)
+# MAGIC filtered_df = df.where("price > 100")
+# MAGIC
+# MAGIC # Action (triggers computation)
+# MAGIC filtered_df.show()
+
+# COMMAND ----------
+
 # DBTITLE 0,--i18n-236a9dcf-8e89-4b08-988a-67c3ca31bb71
 # MAGIC %md
 # MAGIC **Method 1: Executing SQL queries**
@@ -53,37 +78,100 @@
 
 # COMMAND ----------
 
+from pyspark.sql.types import StructType, StructField, IntegerType, StringType, DoubleType, DateType
+from datetime import date
+
+# Define schema
+schema = StructType([
+    StructField("order_id", IntegerType(), False),
+    StructField("customer_name", StringType(), True),
+    StructField("product", StringType(), True),
+    StructField("quantity", IntegerType(), True),
+    StructField("price", DoubleType(), True),
+    StructField("order_date", DateType(), True)
+])
+
+# Create sample data
+data = [
+    (1, "Alice", "Laptop", 1, 75000.00, date(2025, 12, 10)),
+    (2, "Bob", "Smartphone", 2, 30000.00, date(2025, 12, 11)),
+    (3, "Charlie", "Headphones", 3, 1500.00, date(2025, 12, 12)),
+       (4, "David", "Monitor", 1, 12000.00, date(2025, 12, 13)),
+    (5, "Eva", "Keyboard", 2, 2000.00, date(2025, 12, 14))
+]
+
+# Create DataFrame
+orders_df = spark.createDataFrame(data, schema)
+
+# Show DataFrame
+
+
+# COMMAND ----------
+
+orders_df.display()
+
+# COMMAND ----------
+
+orders_df.show()
+
+# COMMAND ----------
+
+display(orders_df)
+
+# COMMAND ----------
+
+orders_df.createOrReplaceTempView("orders")
+
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC #Using SQL Command
+
+# COMMAND ----------
+
 # MAGIC %sql
-# MAGIC SELECT name, price
-# MAGIC FROM products
-# MAGIC WHERE price < 200
-# MAGIC ORDER BY price
+# MAGIC
+# MAGIC select * from orders
 
 # COMMAND ----------
 
-# DBTITLE 0,--i18n-58f7e711-13f5-4015-8cff-c18ec5b305c6
 # MAGIC %md
-# MAGIC
-# MAGIC **Method 2: Working with the DataFrame API**
-# MAGIC
-# MAGIC We can also express Spark SQL queries using the DataFrame API.
-# MAGIC The following cell returns a DataFrame containing the same results as those retrieved above.
+# MAGIC #Using SparkSQL
 
 # COMMAND ----------
 
-display(spark
-        .table("products")
-        .select("name", "price")
-        .where("price < 200")
-        .orderBy("price")
-       )
+spark.sql('select * from orders').show()
 
 # COMMAND ----------
 
-# DBTITLE 0,--i18n-5b338899-be0c-46ae-92d9-8cfc3c2c3fb8
 # MAGIC %md
+# MAGIC ##Using SELECTEXPR
+
+# COMMAND ----------
+
+display(orders_df.selectExpr("*"))
+
+# COMMAND ----------
+
+# MAGIC %sql
 # MAGIC
-# MAGIC We'll go over the syntax for the DataFrame API later in the lesson, but you can see this builder design pattern allows us to chain a sequence of operations very similar to those we find in SQL.
+# MAGIC select * from orders where price <= 1500
+
+# COMMAND ----------
+
+display(spark.table("orders").select("customer_name", "product","price")
+             .where("price <= 2000")
+             .orderBy("price")
+            )
+
+# COMMAND ----------
+
+orders_df.printSchema()
+
+# COMMAND ----------
+
+
 
 # COMMAND ----------
 
@@ -125,18 +213,10 @@ display(spark
 
 # COMMAND ----------
 
-spark
-
-# COMMAND ----------
-
 # DBTITLE 0,--i18n-4f5934fb-12b9-4bf2-b821-5ab17d627309
 # MAGIC %md
 # MAGIC
 # MAGIC The example from the beginning of this lesson used the SparkSession method **`table`** to create a DataFrame from the **`products`** table. Let's save this in the variable **`products_df`**.
-
-# COMMAND ----------
-
-products_df = spark.table("products")
 
 # COMMAND ----------
 
@@ -162,17 +242,6 @@ products_df = spark.table("products")
 
 # COMMAND ----------
 
-result_df = spark.sql("""
-SELECT name, price
-FROM products
-WHERE price < 200
-ORDER BY price
-""")
-
-display(result_df)
-
-# COMMAND ----------
-
 # DBTITLE 0,--i18n-f2851702-3573-4cb4-9433-ec31d4ceb0f2
 # MAGIC %md
 # MAGIC
@@ -183,23 +252,10 @@ display(result_df)
 
 # COMMAND ----------
 
-budget_df = (spark
-             .table("products")
-             .select("name", "price")
-             .where("price < 200")
-             .orderBy("price")
-            )
-
-# COMMAND ----------
-
 # DBTITLE 0,--i18n-d538680a-1d7a-433c-9715-7fd975d4427b
 # MAGIC %md
 # MAGIC
 # MAGIC We can use **`display()`** to output the results of a dataframe.
-
-# COMMAND ----------
-
-display(budget_df)
 
 # COMMAND ----------
 
@@ -212,18 +268,10 @@ display(budget_df)
 
 # COMMAND ----------
 
-budget_df.schema
-
-# COMMAND ----------
-
 # DBTITLE 0,--i18n-4212166a-a200-44b5-985c-f7f1b33709a3
 # MAGIC %md
 # MAGIC
 # MAGIC View a nicer output for this schema using the **`printSchema()`** method.
-
-# COMMAND ----------
-
-budget_df.printSchema()
 
 # COMMAND ----------
 
@@ -246,13 +294,6 @@ budget_df.printSchema()
 
 # COMMAND ----------
 
-(products_df
-  .select("name", "price")
-  .where("price < 200")
-  .orderBy("price"))
-
-# COMMAND ----------
-
 # DBTITLE 0,--i18n-56f40b55-842f-44cf-b34a-b0fd17a962d4
 # MAGIC %md
 # MAGIC
@@ -261,14 +302,6 @@ budget_df.printSchema()
 # MAGIC Actions are needed to trigger the execution of any DataFrame transformations.
 # MAGIC
 # MAGIC The **`show`** action causes the following cell to execute transformations.
-
-# COMMAND ----------
-
-(products_df
-  .select("name", "price")
-  .where("price < 200")
-  .orderBy("price")
-  .show())
 
 # COMMAND ----------
 
@@ -295,17 +328,9 @@ budget_df.printSchema()
 
 # COMMAND ----------
 
-budget_df.count()
-
-# COMMAND ----------
-
 # DBTITLE 0,--i18n-12ea69d5-587e-4953-80d9-81955eeb9d7b
 # MAGIC %md
 # MAGIC **`collect`** returns an array of all rows in a DataFrame.
-
-# COMMAND ----------
-
-budget_df.collect()
 
 # COMMAND ----------
 
@@ -322,22 +347,10 @@ budget_df.collect()
 
 # COMMAND ----------
 
-budget_df.createOrReplaceTempView("budget")
-
-# COMMAND ----------
-
-display(spark.sql("SELECT * FROM budget"))
-
-# COMMAND ----------
-
 # DBTITLE 0,--i18n-81ff52ca-2160-4bfd-a78f-b3ba2f8b4933
 # MAGIC %md
 # MAGIC
 # MAGIC Run the following cell to delete the tables and files associated with this lesson.
-
-# COMMAND ----------
-
-DA.cleanup()
 
 # COMMAND ----------
 
