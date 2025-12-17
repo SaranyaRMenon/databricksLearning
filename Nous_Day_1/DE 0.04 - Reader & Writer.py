@@ -13,6 +13,17 @@
 
 # COMMAND ----------
 
+dbutils.fs.ls('/databricks-datasets/COVID/coronavirusdataset/PatientRoute.csv')
+
+# COMMAND ----------
+
+# dbutils.fs.ls('/databricks-datasets/songs/data-001')
+
+songsdf=spark.read.format('csv').load('/databricks-datasets/COVID/coronavirusdataset/PatientRoute.csv',header=True,inferSchema=True)
+songsdf.display()
+
+# COMMAND ----------
+
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, to_date, year, month, count, sum, avg
 
@@ -119,12 +130,9 @@ print(f"===== WRITING TO CSV =====")
 print(f"Output path: {csv_output_path}\n")
 
 # Write DataFrame to CSV
-df_hospital.coalesce(1) \
-    .write \
-    .option("header", "true") \
-    .mode("overwrite") \
-    .csv(csv_output_path)
-
+#df_hospital.write.option("header", "true").mode("overwrite").csv(csv_output_path)
+#df_hospital.coalesce(1).write.option("header", "true").mode("overwrite").csv(csv_output_path)
+df_hospital.repartition(3).write.option("header", "true").mode("overwrite").csv(csv_output_path)
 print("✓ CSV write completed successfully!")
 print(f"Location: {csv_output_path}")
 
@@ -176,6 +184,10 @@ df_hospital.write \
 
 print("✓ Delta Lake write completed successfully!")
 print(f"Location: {delta_output_path}")
+
+# COMMAND ----------
+
+dbutils.fs.ls('/tmp/covid_outputs/hospital_beds_delta')
 
 # COMMAND ----------
 

@@ -83,8 +83,9 @@ emp_df.display()
 
 from pyspark.sql.functions import col
 
-print(emp_df.name)
-print(emp_df["name"])
+
+emp_df.select("name").show()
+print(emp_df.select(emp_df["name"]).show())
 print(col("name"))
 
 # COMMAND ----------
@@ -135,13 +136,22 @@ col("emp_id").desc()
 
 rev_df = (
     emp_df
-    .filter(col("salary").isNotNull())
-    .withColumn("purchase_revenue", (col("salary") * 100).cast("int"))
-    .withColumn("avg_purchase_revenue", col("salary") / col("experience"))
-    .sort(col("avg_purchase_revenue").desc())
+    .filter(col("salary").isNotNull())).show()
+
+# COMMAND ----------
+
+from pyspark.sql.functions import lit
+rev_df = (
+    emp_df
+    .withColumn("Increment", (col("salary") * 0.10).cast("int"))
+    .sort(col("salary").desc())
 )
 
-display(rev_df)
+#display(rev_df)
+
+total_salary=rev_df.withColumn("total_salary", col("salary")+col("Increment"))
+display(total_salary)
+
 
 # COMMAND ----------
 
@@ -218,7 +228,9 @@ display(apple_df)
 
 # COMMAND ----------
 
-anonymous_df = emp_df.drop("emp_id", "country", "dept")
+dropfield=["emp_id", "country", "dept","aviral"]
+#anonymous_df = emp_df.drop("emp_id", "country", "dept","aviral")
+anonymous_df = emp_df.drop(*dropfield)
 display(anonymous_df)
 
 # COMMAND ----------
@@ -241,6 +253,18 @@ display(no_sales_df)
 # MAGIC
 # MAGIC #### **`withColumn()`**
 # MAGIC Returns a new DataFrame by adding a column or replacing an existing column that has the same name.
+
+# COMMAND ----------
+
+# withColumn: Adds a new column or replaces an existing column in the DataFrame.
+# Syntax: DataFrame.withColumn(colName, col)
+# Example:
+# df = df.withColumn("new_column", col("existing_column") * 2)
+
+# withColumnRenamed: Renames an existing column in the DataFrame.
+# Syntax: DataFrame.withColumnRenamed(existing, new)
+# Example:
+# df = df.withColumnRenamed("old_column", "new_column")
 
 # COMMAND ----------
 
@@ -285,7 +309,7 @@ display(location_emp_df)
 
 # COMMAND ----------
 
-purchases_emp_df = emp_df.filter("salary > 0")
+purchases_emp_df = emp_df.filter("salary > 70000")
 display(purchases_emp_df)
 
 # COMMAND ----------
@@ -316,6 +340,7 @@ display(emp_df.distinct())
 
 distinct_emp_df = emp_df.dropDuplicates(["is_active"])
 display(distinct_emp_df)
+
 
 # COMMAND ----------
 
@@ -350,7 +375,7 @@ display(limit_df)
 
 # COMMAND ----------
 
-increase_salary_df = emp_df.sort("salary")
+increase_salary_df = emp_df.sort("salary", ascending=True)
 display(increase_salary_df)
 
 # COMMAND ----------

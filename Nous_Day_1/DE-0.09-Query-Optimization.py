@@ -18,7 +18,7 @@
 # COMMAND ----------
 
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, count, when, sum, avg, explain
+from pyspark.sql.functions import col, count, when, sum, avg
 from pyspark.sql.types import StructType, StructField, IntegerType, StringType, DoubleType
 
 print("✓ All required libraries imported successfully!")
